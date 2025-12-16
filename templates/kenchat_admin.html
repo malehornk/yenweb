@@ -1,34 +1,80 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>KenChat Admin Panel</title>
-    <style>
-        body { font-family: Arial; background: #fff; color: #000; margin: 20px; }
-        form { margin-bottom: 20px; }
-        button { padding: 5px 10px; margin-left: 5px; }
-    </style>
+    <title>KenWeb Admin Panel</title>
 </head>
 <body>
-    <h1>KenChat Admin Panel</h1>
-    <h2>Rooms</h2>
-    <ul>
-        {% for room in rooms %}
-            <li>{{ room }}
-                {% if room != "general" %}
-                <form action="/delete_room" method="POST" style="display:inline;">
-                    <input type="hidden" name="room_name" value="{{ room }}">
-                    <button type="submit">Delete</button>
-                </form>
-                {% endif %}
-            </li>
-        {% endfor %}
-    </ul>
 
-    <form action="/create_room" method="POST">
-        New room name: <input type="text" name="new_room">
-        <button type="submit">Create</button>
-    </form>
+<h1>KenWeb Admin Panel</h1>
+<hr>
 
-    <p><a href="/admin/logout">Logout Admin</a> | <a href="/">Back to KenHub</a></p>
+{% if not session.get("admin_logged_in") %}
+
+<h2>Admin Login</h2>
+
+<form method="post">
+    <label>Password:</label><br>
+    <input type="password" name="password">
+    <br><br>
+    <input type="submit" value="Login">
+</form>
+
+{% else %}
+
+<p><b>Status:</b> Logged in</p>
+
+<hr>
+
+<h2>KenBot API Settings</h2>
+
+<p>Current API server:</p>
+<p>
+<code>
+{{ session.get("kenbot_api_url", "Not set") }}
+</code>
+</p>
+
+<form method="post" action="{{ url_for('set_kenbot_api') }}">
+    <label>API URL:</label><br>
+    <input type="text" name="api_url" size="40"
+           placeholder="http://127.0.0.1:8000">
+    <br><br>
+    <input type="submit" value="Save API URL">
+</form>
+
+<hr>
+
+<h2>Chat Rooms</h2>
+
+<ul>
+{% for room in rooms %}
+    <li>
+        {{ room }}
+        {% if room != "general" %}
+        <form method="post" action="{{ url_for('delete_room') }}" style="display:inline;">
+            <input type="hidden" name="room_name" value="{{ room }}">
+            <input type="submit" value="Delete">
+        </form>
+        {% endif %}
+    </li>
+{% endfor %}
+</ul>
+
+<h3>Create New Room</h3>
+
+<form method="post" action="{{ url_for('create_room') }}">
+    <input type="text" name="new_room" placeholder="room name">
+    <input type="submit" value="Create">
+</form>
+
+<hr>
+
+<form method="get" action="{{ url_for('admin_logout') }}">
+    <input type="submit" value="Logout">
+</form>
+
+{% endif %}
+
 </body>
 </html>
+
