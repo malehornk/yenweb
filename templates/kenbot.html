@@ -2,28 +2,35 @@
 <html>
 <head>
     <title>KenBot</title>
-    <style>
-        body { font-family: Arial; background: #fff; color: #000; margin: 20px; }
-        .chat { border: 1px solid #888; padding: 10px; margin-bottom: 10px; height: 300px; overflow-y: auto; }
-        .user { font-weight: bold; }
-        input { width: 70%; }
-        button { padding: 5px 10px; }
-        pre { background: #eee; padding: 10px; border: 1px solid #ccc; }
-    </style>
 </head>
 <body>
-    <h1>KenBot AI</h1>
-    <div class="chat">
-        {% for msg in history %}
-            <div><span class="user">{{ msg.user }}:</span> {{ msg.text }}</div>
-        {% endfor %}
-    </div>
-    <form action="/kenbot/send" method="POST">
-        <input type="text" name="text">
-        <button type="submit">Send</button>
-    </form>
-    <p>
-        <a href="/kenbot/reset">Reset Chat</a> | <a href="/">Back to KenHub</a>
-    </p>
+
+<h1>KenBot</h1>
+<hr>
+
+{% if history %}
+    {% for msg in history %}
+        <p><b>{{ msg.user }}:</b> {{ msg.text }}</p>
+    {% endfor %}
+{% else %}
+    <p>No messages yet.</p>
+{% endif %}
+
+<hr>
+
+<form method="post" action="{{ url_for('kenbot_send') }}">
+    <input type="text" name="text" size="50" autofocus>
+    <input type="submit" value="Send">
+</form>
+
+<br>
+
+<form method="get" action="{{ url_for('kenbot_reset') }}">
+    <input type="submit" value="Reset Conversation">
+</form>
+
+<br>
+<a href="/">Back</a>
+
 </body>
 </html>
