@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% if title %}Edit{% else %}Create{% endif %} Entry - KenWiki</title>
+    <style>
+        body { font-family: Arial; background: #fff; color: #000; margin: 20px; }
+        textarea { width: 80%; height: 300px; }
+        button { padding: 5px 10px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>{% if title %}Edit{% else %}Create{% endif %} Entry</h1>
+    <form method="POST">
+        {% if not title %}
+        Title: <input type="text" name="title"><br>
+        {% endif %}
+        Content:<br>
+        <textarea name="content">{{ content or "" }}</textarea><br>
+        <button type="submit">{% if title %}Update{% else %}Create{% endif %}</button>
+    </form>
+    <p><a href="/wiki">Back to Wiki Home</a> | <a href="/">Back to KenHub</a></p>
+</body>
+</html>

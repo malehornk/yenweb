@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }} - KenWiki</title>
+    <style>
+        body { font-family: Arial; background: #fff; color: #000; margin: 20px; }
+        pre { background: #eee; padding: 10px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>{{ title }}</h1>
+    <pre>{{ content }}</pre>
+    <p>
+        <a href="/wiki">Back to Wiki Home</a> | <a href="/">Back to KenHub</a>
+        {% if session.get('wiki_logged_in') %}
+            | <a href="/wiki/edit/{{ title|urlencode }}">Edit</a>
+            <form action="/wiki/delete/{{ title|urlencode }}" method="POST" style="display:inline;">
+                <button type="submit">Delete</button>
+            </form>
+        {% endif %}
+    </p>
+</body>
+</html>

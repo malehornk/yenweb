@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KenWiki</title>
+    <style>
+        body { font-family: Arial; background: #fff; color: #000; margin: 20px; }
+        a { display: block; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>KenWiki Home</h1>
+    {% if session.get('wiki_logged_in') %}
+        <p><a href="/wiki/create">Create New Entry</a> | <a href="/wiki/logout">Logout</a></p>
+    {% else %}
+        <p><a href="/wiki/login">Login</a></p>
+    {% endif %}
+    <h2>Entries:</h2>
+    {% for title in entries %}
+        <a href="/wiki/entry/{{ title|urlencode }}">{{ title }}</a>
+    {% endfor %}
+    <p><a href="/">Back to KenHub</a></p>
+</body>
+</html>

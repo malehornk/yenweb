@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KenChat</title>
+    <style>
+        body { font-family: Arial; background: #fff; color: #000; margin: 20px; }
+        .message { border-bottom: 1px solid #888; padding: 5px; }
+        .user { font-weight: bold; }
+        input, select { margin: 5px; }
+        button { padding: 5px 10px; }
+    </style>
+</head>
+<body>
+    <h1>KenChat - Room: {{ room }}</h1>
+    <div>
+        {% for msg in messages %}
+            <div class="message"><span class="user">{{ msg.user }}:</span> {{ msg.text }}</div>
+        {% endfor %}
+    </div>
+    <form action="/send_win98" method="POST">
+        Username: <input type="text" name="user" value="{{ username }}">
+        <input type="hidden" name="room" value="{{ room }}">
+        <br>
+        Message: <input type="text" name="text" size="50">
+        <button type="submit">Send</button>
+    </form>
+    <p>
+        <a href="/">Back to KenHub</a>
+    </p>
+</body>
+</html>
