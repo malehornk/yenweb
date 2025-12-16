@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import json, os
-
+import requests
 
 app = Flask(__name__)
 app.secret_key = "kenhub_secret"
@@ -28,11 +28,34 @@ def save_entries(entries):
     with open(ENTRIES_FILE, "w") as f:
         json.dump(entries, f, indent=4)
 
+# --------------------
+# KenBot API helper
+# --------------------
+def call_kenbot_api(prompt):
+    api_url = session.get("kenbot_api")
+    if not api_url:
+        raise RuntimeError("KenBot API not configured")
+
+    try:
+        r = requests.post(
+            api_url,
+            json={"message": prompt},
+            timeout=5
+        )
+        r.raise_for_status()
+        data = r.json()
+        return data.get("reply", "KenBot did not respond.")
+    except Exception:
+        raise
+
 # --- Routes ---
 @app.route("/")
 def home():
     return render_template("home.html")
 
+# --------------------
+# KenChat (NO KENBOT)
+# --------------------
 @app.route("/kenchat")
 def kenchat():
     username = request.args.get("username", "")
@@ -40,30 +63,62 @@ def kenchat():
     if room not in chatrooms:
         chatrooms[room] = []
     messages = chatrooms[room]
-    return render_template("kenchat.html", messages=messages, username=username, room=room, rooms=list(chatrooms.keys()))
+    return render_template(
+        "kenchat.html",
+        messages=messages,
+        username=username,
+        room=room,
+        rooms=list(chatrooms.keys())
+    )
 
 @app.route("/send_win98", methods=["POST"])
 def send_win98():
     user = request.form.get("user", "Anon")[:MAX_USERNAME]
     text = request.form.get("text", "")[:MAX_TEXT]
     room = request.form.get("room", "general")
+
     if room not in chatrooms:
         chatrooms[room] = []
+
     if text.strip():
-        if text.lower().startswith("oevhwEHIUWEVHOUWEHWUEVHUWEGHhhfjfuehejjjj "):
-            query = text[8:].strip()
-            chatrooms[room].append({"user": user, "text": query})
-            bot_reply = chat_with_bot(query)
-            chatrooms[room].append({"user": "KenBot", "text": bot_reply})
-        else:
-            chatrooms[room].append({"user": user, "text": text})
+        chatrooms[room].append({"user": user, "text": text})
         if len(chatrooms[room]) > MAX_MESSAGES:
             chatrooms[room].pop(0)
+
     return redirect(url_for("kenchat", username=user, room=room))
 
+# --------------------
+# KenBot page (API)
+# --------------------
+@app.route("/kenbot")
+def kenbot_page():
+    history = session.get("kenbot_history", [])
+    return render_template("kenbot.html", history=history)
 
+@app.route("/kenbot/send", methods=["POST"])
+def kenbot_send():
+    user_input = request.form.get("text", "")
+    history = session.get("kenbot_history", [])
 
-# --- Wiki routes ---
+    if user_input.strip():
+        history.append({"user": "You", "text": user_input})
+        try:
+            reply = call_kenbot_api(user_input)
+            history.append({"user": "KenBot", "text": reply})
+        except Exception:
+            return render_template("error.html")
+
+    session["kenbot_history"] = history
+    return redirect(url_for("kenbot_page"))
+
+@app.route("/kenbot/reset")
+def kenbot_reset():
+    session["kenbot_history"] = []
+    return redirect(url_for("kenbot_page"))
+
+# --------------------
+# Wiki routes
+# --------------------
 @app.route("/wiki")
 def wiki_home():
     entries = load_entries()
@@ -79,10 +134,10 @@ def wiki_entry(title):
 
 @app.route("/wiki/login", methods=["GET","POST"])
 def wiki_login():
-    if request.method=="POST":
+    if request.method == "POST":
         if request.form.get("password") == WIKI_PASSWORD:
             session["wiki_logged_in"] = True
-            flash("Logged in! You can create/edit/delete entries.", "success")
+            flash("Logged in!", "success")
             return redirect(url_for("wiki_home"))
         else:
             flash("Wrong password!", "danger")
@@ -94,86 +149,57 @@ def wiki_logout():
     flash("Logged out!", "info")
     return redirect(url_for("wiki_home"))
 
-@app.route("/wiki/create", methods=["GET","POST"])
-def wiki_create():
-    if not session.get("wiki_logged_in"):
-        flash("You must log in to create entries.", "warning")
-        return redirect(url_for("wiki_login"))
-    if request.method=="POST":
-        title = request.form.get("title")
-        content = request.form.get("content")
-        entries = load_entries()
-        if title in entries:
-            flash("Entry exists!", "danger")
-        else:
-            entries[title] = content
-            save_entries(entries)
-            flash(f"Entry '{title}' created!", "success")
-            return redirect(url_for("wiki_entry", title=title))
-    return render_template("wiki_create.html")
-
-@app.route("/wiki/edit/<title>", methods=["GET","POST"])
-def wiki_edit(title):
-    if not session.get("wiki_logged_in"):
-        flash("You must log in to edit entries.", "warning")
-        return redirect(url_for("wiki_login"))
-    entries = load_entries()
-    content = entries.get(title)
-    if content is None:
-        flash(f"Entry '{title}' not found!", "danger")
-        return redirect(url_for("wiki_home"))
-    if request.method=="POST":
-        new_content = request.form.get("content")
-        entries[title] = new_content
-        save_entries(entries)
-        flash(f"Entry '{title}' updated!", "success")
-        return redirect(url_for("wiki_entry", title=title))
-    return render_template("wiki_edit.html", title=title, content=content)
-
-@app.route("/wiki/delete/<title>", methods=["POST"])
-def wiki_delete(title):
-    if not session.get("wiki_logged_in"):
-        flash("You must log in to delete entries.", "warning")
-        return redirect(url_for("wiki_login"))
-    entries = load_entries()
-    if title in entries:
-        del entries[title]
-        save_entries(entries)
-        flash(f"Entry '{title}' deleted!", "success")
-    return redirect(url_for("wiki_home"))
-
-# --- KenChat Admin ---
+# --------------------
+# Admin panel
+# --------------------
 @app.route("/admin", methods=["GET","POST"])
 def admin_panel():
-    if request.method=="POST":
-        if request.form.get("password")==ADMIN_PASSWORD:
-            session["admin_logged_in"]=True
+    if request.method == "POST":
+        if request.form.get("password") == ADMIN_PASSWORD:
+            session["admin_logged_in"] = True
             flash("Admin logged in!", "success")
             return redirect(url_for("admin_panel"))
         else:
             flash("Wrong password!", "danger")
+
     if not session.get("admin_logged_in"):
         return render_template("kenchat_admin_login.html")
-    return render_template("kenchat_admin.html", rooms=list(chatrooms.keys()))
+
+    return render_template(
+        "kenchat_admin.html",
+        rooms=list(chatrooms.keys()),
+        kenbot_api=session.get("kenbot_api", "")
+    )
+
+@app.route("/admin/set_kenbot_api", methods=["POST"])
+def set_kenbot_api():
+    if not session.get("admin_logged_in"):
+        return redirect(url_for("admin_panel"))
+
+    session["kenbot_api"] = request.form.get("api_url", "").strip()
+    flash("KenBot API server updated", "success")
+    return redirect(url_for("admin_panel"))
 
 @app.route("/create_room", methods=["POST"])
 def create_room():
     if not session.get("admin_logged_in"):
-        flash("You must log in as admin.", "warning")
         return redirect(url_for("admin_panel"))
+
     room_name = request.form.get("new_room")
     if room_name and room_name not in chatrooms:
         chatrooms[room_name] = []
+
     return redirect(url_for("admin_panel"))
 
 @app.route("/delete_room", methods=["POST"])
 def delete_room():
     if not session.get("admin_logged_in"):
-        flash("You must log in as admin.", "warning")
         return redirect(url_for("admin_panel"))
+
     room_name = request.form.get("room_name")
     if room_name in chatrooms and room_name != "general":
         del chatrooms[room_name]
+
     return redirect(url_for("admin_panel"))
 
 @app.route("/admin/logout")
@@ -183,7 +209,7 @@ def admin_logout():
     return redirect(url_for("home"))
 
 if __name__ == "__main__":
-    import os
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
