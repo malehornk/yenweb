@@ -11,7 +11,7 @@
     <h1>{{ title }}</h1>
     <pre>{{ content }}</pre>
     <p>
-        <a href="/wiki">Back to Wiki Home</a> | <a href="/">Back to KenHub</a>
+        <a href="/wiki">Back to Wiki Home</a> | <a href="/">Back to home</a>
         {% if session.get('wiki_logged_in') %}
             | <a href="/wiki/edit/{{ title|urlencode }}">Edit</a>
             <form action="/wiki/delete/{{ title|urlencode }}" method="POST" style="display:inline;">
@@ -21,3 +21,4 @@
     </p>
 </body>
 </html>
+
