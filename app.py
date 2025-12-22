@@ -134,10 +134,10 @@ def wiki_entry(title):
 
 @app.route("/wiki/login", methods=["GET","POST"])
 def wiki_login():
-    if request.method == "POST":
+    if request.method=="POST":
         if request.form.get("password") == WIKI_PASSWORD:
             session["wiki_logged_in"] = True
-            flash("Logged in!", "success")
+            flash("Logged in! You can create/edit/delete entries.", "success")
             return redirect(url_for("wiki_home"))
         else:
             flash("Wrong password!", "danger")
@@ -147,6 +147,54 @@ def wiki_login():
 def wiki_logout():
     session.pop("wiki_logged_in", None)
     flash("Logged out!", "info")
+    return redirect(url_for("wiki_home"))
+
+@app.route("/wiki/create", methods=["GET","POST"])
+def wiki_create():
+    if not session.get("wiki_logged_in"):
+        flash("You must log in to create entries.", "warning")
+        return redirect(url_for("wiki_login"))
+    if request.method=="POST":
+        title = request.form.get("title")
+        content = request.form.get("content")
+        entries = load_entries()
+        if title in entries:
+            flash("Entry exists!", "danger")
+        else:
+            entries[title] = content
+            save_entries(entries)
+            flash(f"Entry '{title}' created!", "success")
+            return redirect(url_for("wiki_entry", title=title))
+    return render_template("wiki_create.html")
+
+@app.route("/wiki/edit/<title>", methods=["GET","POST"])
+def wiki_edit(title):
+    if not session.get("wiki_logged_in"):
+        flash("You must log in to edit entries.", "warning")
+        return redirect(url_for("wiki_login"))
+    entries = load_entries()
+    content = entries.get(title)
+    if content is None:
+        flash(f"Entry '{title}' not found!", "danger")
+        return redirect(url_for("wiki_home"))
+    if request.method=="POST":
+        new_content = request.form.get("content")
+        entries[title] = new_content
+        save_entries(entries)
+        flash(f"Entry '{title}' updated!", "success")
+        return redirect(url_for("wiki_entry", title=title))
+    return render_template("wiki_edit.html", title=title, content=content)
+
+@app.route("/wiki/delete/<title>", methods=["POST"])
+def wiki_delete(title):
+    if not session.get("wiki_logged_in"):
+        flash("You must log in to delete entries.", "warning")
+        return redirect(url_for("wiki_login"))
+    entries = load_entries()
+    if title in entries:
+        del entries[title]
+        save_entries(entries)
+        flash(f"Entry '{title}' deleted!", "success")
     return redirect(url_for("wiki_home"))
 
 # --------------------
@@ -210,6 +258,7 @@ def admin_logout():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
